@@ -511,6 +511,9 @@
       .footer-inner { flex-direction: column; text-align: center; }
     }
   </style>
+
+  <!-- HubSpot Tracking Code -->
+  <script type="text/javascript" id="hs-script-loader" async defer src="//js.hs-scripts.com/148564555.js"></script>
 </head>
 <body>
 
@@ -1054,28 +1057,77 @@ function updateFileLabel(input) {
   label.textContent = input.files[0] ? '✅ ' + input.files[0].name : 'Click to attach your logo or design file';
 }
 
-// ── FORM SUBMIT ──
+// ── FORM SUBMIT → CSV BACKEND + HUBSPOT CRM ──
+// 🔧 CONFIGURATION — update BACKEND_URL after deploying your backend server
+// Local testing:  http://localhost:3000
+// Railway/Render: https://your-backend-url.up.railway.app
+const BACKEND_URL = 'http://localhost:3000'; // ← UPDATE this when you deploy backend online
+
+// HubSpot config (already connected)
+const HUBSPOT_PORTAL_ID = '148564555';
+const HUBSPOT_FORM_GUID = '27NQg6mn-Spa0KYYmIgapmg'; // ✅ HubSpot Form GUID connected
+
 function handleFormSubmit() {
   const required = ['first_name','last_name','email','phone','product','quantity','delivery'];
   let valid = true;
   required.forEach(id => {
     const el = document.getElementById(id);
-    if (!el.value.trim()) { el.style.borderColor = 'var(--accent)'; valid = false; }
+    if (!el || !el.value.trim()) { if(el) el.style.borderColor = 'var(--accent)'; valid = false; }
     else el.style.borderColor = '';
   });
   if (!valid) { alert('Please fill in all required fields.'); return; }
 
-  // CRM INTEGRATION POINT — replace below with your CRM endpoint
-  const formData = {};
-  document.querySelectorAll('[data-crm-field]').forEach(f => {
-    if (f.name) formData[f.getAttribute('data-crm-field')] = f.value;
-  });
-  console.log('CRM Payload:', formData);
+  const btn = document.querySelector('.form-submit');
+  btn.textContent = 'Sending...';
+  btn.disabled = true;
 
+  // Build data object
+  const orderData = {
+    firstname:      document.getElementById('first_name').value,
+    lastname:       document.getElementById('last_name').value,
+    email:          document.getElementById('email').value,
+    phone:          document.getElementById('phone').value,
+    company:        document.getElementById('organization').value,
+    product_type:   document.getElementById('product').value,
+    quantity:       document.getElementById('quantity').value,
+    delivery_state: document.getElementById('delivery').value,
+    message:        document.getElementById('message').value,
+    lead_source:    'ES Tees Website'
+  };
+
+  // ── 1. SAVE TO CSV BACKEND ──
+  fetch(`${BACKEND_URL}/submit-order`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(orderData)
+  })
+  .then(res => res.json())
+  .then(result => {
+    console.log('✅ Saved to CSV:', result.message);
+  })
+  .catch(err => {
+    console.warn('⚠️ CSV backend not reachable (is server running?):', err.message);
+  });
+
+  // ── 2. SEND TO HUBSPOT CRM ──
+  const hsFields = Object.entries(orderData).map(([name, value]) => ({ name, value }));
+  const hsPayload = {
+    submittedAt: Date.now(),
+    fields: hsFields,
+    context: { pageUri: window.location.href, pageName: 'ES Tees Landing Page' }
+  };
+  fetch(`https://api.hsforms.com/submissions/v3/integration/submit/${HUBSPOT_PORTAL_ID}/${HUBSPOT_FORM_GUID}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(hsPayload)
+  })
+  .then(res => console.log('✅ Sent to HubSpot. Status:', res.status))
+  .catch(err => console.warn('⚠️ HubSpot submission error:', err.message));
+
+  // ── 3. SHOW SUCCESS TO USER ──
   document.getElementById('form-success').style.display = 'block';
-  document.querySelector('.form-submit').disabled = true;
-  document.querySelector('.form-submit').textContent = 'Request Sent ✓';
-  document.querySelector('.form-submit').style.background = '#2a2a2a';
+  btn.textContent = 'Request Sent ✓';
+  btn.style.background = '#2a2a2a';
 }
 
 // ── NAV SCROLL HIGHLIGHT ──
