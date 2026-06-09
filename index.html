@@ -406,5 +406,8 @@ function faq(btn){const item=btn.parentElement;const isOpen=item.classList.conta
 document.addEventListener('click',e=>{if(!e.target.closest('.wa-float'))document.getElementById('wapop').classList.remove('open');});
 window.addEventListener('scroll',()=>{let cur='';document.querySelectorAll('section[id]').forEach(s=>{if(window.scrollY>=s.offsetTop-120)cur=s.id;});document.querySelectorAll('.nav-links a').forEach(a=>{a.style.color=a.getAttribute('href')==='#'+cur?'var(--accent)':'';});});
 </script>
+  <!-- Start of HubSpot Embed Code -->
+<script type="text/javascript" id="hs-script-loader" async defer src="//js-eu1.hs-scripts.com/148564555.js"></script>
+<!-- End of HubSpot Embed Code -->
 </body>
 </html>
